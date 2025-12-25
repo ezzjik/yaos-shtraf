@@ -1,0 +1,180 @@
+================================================================================
+                        СИМВОЛЬНЫЙ АВТОМАТ ПЕРЕДАТЧИКА UART
+                    (некомбинационная часть управляющего автомата)
+================================================================================
+
+СОСТОЯНИЯ АВТОМАТА:
+
+IDLE (000) - состояние покоя
+├─ action=1: запись в матрицу (остаемся в IDLE)
+├─ action=2..5: переход в START_BIT
+└─ иначе: остаемся в IDLE
+
+START_BIT (001) - передача стартового бита
+├─ div_counter < DIV-1: остаемся в START_BIT
+└─ div_counter = DIV-1: переход в DATA_BITS
+
+DATA_BITS (010) - передача битов данных
+├─ (bit_counter < W-1) ИЛИ (div_counter < DIV-1): остаемся в DATA_BITS
+├─ (bit_counter = W-1) И (div_counter = DIV-1) И (PAR=0): переход в STOP_BIT
+└─ (bit_counter = W-1) И (div_counter = DIV-1) И (PAR≠0): переход в PARITY_BIT
+
+PARITY_BIT (011) - передача бита четности
+├─ div_counter < DIV-1: остаемся в PARITY_BIT
+└─ div_counter = DIV-1: переход в STOP_BIT
+
+STOP_BIT (100) - передача стопового бита
+├─ div_counter < DIV-1: остаемся в STOP_BIT
+├─ (div_counter = DIV-1) И (cells_sent < cells_to_send): переход в NEXT_CELL
+└─ (div_counter = DIV-1) И (cells_sent = cells_to_send): переход в IDLE
+
+NEXT_CELL (101) - выбор следующей ячейки для передачи
+└─ всегда: переход в START_BIT
+
+================================================================================
+ДИАГРАММА СОСТОЯНИЙ В ФОРМАТЕ DOT (Graphviz):
+
+digraph Transmitter_FSM {
+    rankdir=LR;
+    node [shape=circle, style=filled, fillcolor=lightblue];
+    
+    IDLE -> START_BIT [label="action=2..5"];
+    START_BIT -> DATA_BITS [label="div_counter=DIV-1"];
+    DATA_BITS -> STOP_BIT [label="bit_counter=W-1\nPAR=0"];
+    DATA_BITS -> PARITY_BIT [label="bit_counter=W-1\nPAR≠0"];
+    PARITY_BIT -> STOP_BIT [label="div_counter=DIV-1"];
+    STOP_BIT -> IDLE [label="cells_sent=cells_to_send"];
+    STOP_BIT -> NEXT_CELL [label="cells_sent<cells_to_send"];
+    NEXT_CELL -> START_BIT;
+    
+    // Петли
+    IDLE -> IDLE [label="action=1\nили\naction=0"];
+    START_BIT -> START_BIT [label="div_counter<DIV-1"];
+    DATA_BITS -> DATA_BITS [label="bit_counter<W-1\nили\ndiv_counter<DIV-1"];
+    PARITY_BIT -> PARITY_BIT [label="div_counter<DIV-1"];
+    STOP_BIT -> STOP_BIT [label="div_counter<DIV-1"];
+}
+
+================================================================================
+ТАБЛИЦА ПЕРЕХОДОВ СОСТОЯНИЙ:
+
+| Текущее состояние | Условие перехода             | Следующее состояние |
+|-------------------|------------------------------|---------------------|
+| IDLE              | action ∈ {2,3,4,5}           | START_BIT           |
+| IDLE              | action ∈ {0,1}               | IDLE                |
+| START_BIT         | div_counter < DIV-1          | START_BIT           |
+| START_BIT         | div_counter = DIV-1          | DATA_BITS           |
+| DATA_BITS         | bit_counter < W-1            | DATA_BITS           |
+| DATA_BITS         | (bit_counter = W-1) ∧ (PAR=0)| STOP_BIT            |
+| DATA_BITS         | (bit_counter = W-1) ∧ (PAR≠0)| PARITY_BIT          |
+| PARITY_BIT        | div_counter < DIV-1          | PARITY_BIT          |
+| PARITY_BIT        | div_counter = DIV-1          | STOP_BIT            |
+| STOP_BIT          | div_counter < DIV-1          | STOP_BIT            |
+| STOP_BIT          | (div_counter=DIV-1) ∧        | IDLE                |
+|                   | (cells_sent=cells_to_send)   |                     |
+| STOP_BIT          | (div_counter=DIV-1) ∧        | NEXT_CELL           |
+|                   | (cells_sent<cells_to_send)   |                     |
+| NEXT_CELL         | всегда                       | START_BIT           |
+
+================================================================================
+УПРАВЛЯЮЩИЕ СИГНАЛЫ, ГЕНЕРИРУЕМЫЕ В КАЖДОМ СОСТОЯНИИ:
+
+IDLE:
+    tx = 1
+    busy = 0
+    div_counter = 0
+    bit_counter = 0
+
+START_BIT:
+    tx = 0
+    busy = 1
+    div_counter++
+
+DATA_BITS:
+    tx = shift_reg[0]
+    shift_reg = {1'b0, shift_reg[7:1]}
+    busy = 1
+    div_counter++
+    bit_counter++
+
+PARITY_BIT:
+    tx = parity_bit
+    busy = 1
+    div_counter++
+
+STOP_BIT:
+    tx = 1
+    busy = 1
+    div_counter++
+
+NEXT_CELL:
+    busy = 1
+    Обновление tx_row и tx_col в зависимости от action
+
+================================================================================
+ASCII-ДИАГРАММА АВТОМАТА:
+
+          +------------------------+
+          |                        |
+          |        +---+           |
+          +------->| 0 | IDLE      |
+        action=0,1 |   |           |
+                   +---+           |
+                     |             |
+            action=2..5            |
+                     |             |
+                   +---+           |
+                   | 1 | START_BIT |
+                   +---+           |
+                     |             |
+                div_counter=DIV-1  |
+                     |             |
+                   +---+           |
+                   | 2 | DATA_BITS |<-----------------+
+                   +---+           |                  |
+                     |             |                  |
+        +------------+-------------+                  |
+        |            |                                |
+  PAR≠0 |      PAR=0 | bit_counter=W-1                |
+        |            |                                |
+      +---+          |                              +---+
+      | 3 | PARITY   |                              | 5 | NEXT_CELL
+      +---+ BIT      |                              +---+
+        |            |                                ^
+        |            |                                |
+        +------------+--------+                       |
+                     |        |                       |
+                div_counter=  | cells_sent<           |
+                   DIV-1      | cells_to_send         |
+                     |        |                       |
+                   +---+      |                       |
+                   | 4 | STOP |-----------------------+
+                   +---+ BIT  |
+                     |        |
+                div_counter=  | cells_sent=
+                   DIV-1      | cells_to_send
+                     |        |
+                     +--------+
+                     |
+                     v
+                   В IDLE
+
+================================================================================
+МАТРИЦА ПЕРЕХОДОВ (one-hot кодирование):
+
+Состояние | Код  | Возможные переходы
+----------|------|------------------------------------------------
+IDLE      | 00001 | START_BIT (action=2..5) или IDLE
+START_BIT | 00010 | DATA_BITS
+DATA_BITS | 00100 | PARITY_BIT (PAR≠0) или STOP_BIT (PAR=0)
+PARITY_BIT| 01000 | STOP_BIT
+STOP_BIT  | 10000 | IDLE (все отправлено) или NEXT_CELL
+NEXT_CELL | 00000 | START_BIT (переход без условия)
+
+================================================================================
+ВЫВОДЫ:
+1. Автомат имеет 6 состояний
+2. Является автоматом Мили (выходы зависят от состояния и входов)
+3. Имеет циклическую структуру с возможностью возврата в начальное состояние
+4. Поддерживает передачу переменного количества ячеек (1, 4, 2 или 8)
+5. Включает механизм проверки четности (опционально)

@@ -1,0 +1,72 @@
+// Graphviz диаграмма символьного автомата передатчика
+// Для генерации: dot -Tpng fsm_graphviz.dot -o fsm.png
+
+digraph Transmitter_FSM {
+    rankdir=LR;
+    size="8,5";
+    node [shape=circle, style=filled, fillcolor=lightblue];
+    edge [fontsize=10];
+    
+    // Определение состояний
+    IDLE [label="IDLE\n(tx=1, busy=0)"];
+    START_BIT [label="START_BIT\n(tx=0, busy=1)"];
+    DATA_BITS [label="DATA_BITS\n(tx=data, busy=1)"];
+    PARITY_BIT [label="PARITY_BIT\n(tx=parity, busy=1)", fillcolor=yellow];
+    STOP_BIT [label="STOP_BIT\n(tx=1, busy=1)"];
+    NEXT_CELL [label="NEXT_CELL\n(update indices)"];
+    
+    // Начальное состояние
+    Start [shape=point, width=0.2];
+    Start -> IDLE;
+    
+    // Переходы из IDLE
+    IDLE -> IDLE [label="action=0,1"];
+    IDLE -> START_BIT [label="action=2..5"];
+    
+    // Переходы из START_BIT
+    START_BIT -> START_BIT [label="div_counter\n< DIV-1"];
+    START_BIT -> DATA_BITS [label="div_counter\n= DIV-1"];
+    
+    // Переходы из DATA_BITS
+    DATA_BITS -> DATA_BITS [label="bit_counter < W-1\nOR div_counter < DIV-1"];
+    DATA_BITS -> STOP_BIT [label="bit_counter = W-1\nAND PAR = 0"];
+    DATA_BITS -> PARITY_BIT [label="bit_counter = W-1\nAND PAR ≠ 0"];
+    
+    // Переходы из PARITY_BIT
+    PARITY_BIT -> PARITY_BIT [label="div_counter\n< DIV-1"];
+    PARITY_BIT -> STOP_BIT [label="div_counter\n= DIV-1"];
+    
+    // Переходы из STOP_BIT
+    STOP_BIT -> STOP_BIT [label="div_counter\n< DIV-1"];
+    STOP_BIT -> IDLE [label="div_counter = DIV-1\nAND cells_sent = cells_to_send"];
+    STOP_BIT -> NEXT_CELL [label="div_counter = DIV-1\nAND cells_sent < cells_to_send"];
+    
+    // Переходы из NEXT_CELL
+    NEXT_CELL -> START_BIT [label="always"];
+    
+    // Группировка состояний передачи
+    subgraph cluster_transmission {
+        label="Состояния передачи";
+        style=filled;
+        color=lightgrey;
+        START_BIT; DATA_BITS; PARITY_BIT; STOP_BIT; NEXT_CELL;
+    }
+    
+    // Легенда
+    subgraph cluster_legend {
+        label="Легенда";
+        style=dashed;
+        
+        node [shape=plaintext, width=0.5, height=0.3];
+        edge [style=invis];
+        
+        l1 [label="● IDLE - состояние покоя"];
+        l2 [label="● START_BIT - стартовый бит (0)"];
+        l3 [label="● DATA_BITS - биты данных"];
+        l4 [label="● PARITY_BIT - бит четности"];
+        l5 [label="● STOP_BIT - стоповый бит (1)"];
+        l6 [label="● NEXT_CELL - выбор ячейки"];
+        
+        l1 -> l2 -> l3 -> l4 -> l5 -> l6;
+    }
+}

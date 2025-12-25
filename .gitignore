@@ -1,0 +1,50 @@
+# Временные файлы Icarus Verilog
+*.vvp
+*.vcd
+*.o
+*.exe
+*.so
+*.dll
+
+# Автоматически сгенерированные файлы
+*.swp
+*.swo
+*~
+*.bak
+*.tmp
+
+# Резервные копии
+*.backup
+*.old
+
+# Директории для сборки
+build/
+obj/
+dist/
+.vscode/
+.idea/
+
+# Файлы операционной системы
+.DS_Store
+Thumbs.db
+
+# Логи и отчеты тестов (кроме официальных отчетов)
+test_*.log
+simulation.log
+
+# Временные файлы проекта (оставьте только основные отчеты)
+# Исключить временные файлы, созданные во время разработки
+test_working*.v
+test8.v
+test9_*.v
+test2.v
+test3.v
+test_multi_port.v
+test_two_8bit.v
+test_minimal.v
+transmitter_simple.v
+transmitter_fsm_simple.v
+test_simple_fsm.v
+run_all_tests.sh
+final_verification.sh
+INSTRUCTIONS.txt

@@ -1,0 +1,34 @@
+НЕОБХОДИМЫЕ ФАЙЛЫ ДЛЯ ПРОЕКТА:
+
+Основные модули Verilog:
+1. main.v                 # Основной модуль системы
+2. transmitter.v          # Передатчик (основная версия)
+3. transmitter_fsm.v      # Передатчик с разделением автоматов (задание 4)
+4. receiver.v            # Приемник
+
+Тестовые модули:
+5. test_simple.v         # Простой тест
+6. test_main_comprehensive.v  # Комплексный тест
+7. test_minimal_fsm.v    # Тест передатчика с FSM
+
+Задание 3 (символьный автомат):
+8. symbolic_automaton.txt    # Описание автомата
+9. fsm_diagram.ascii        # ASCII-диаграмма
+10. fsm_formal_description.txt # Формальное описание
+11. fsm_graphviz.dot        # Graphviz диаграмма
+12. assignment3_report.txt  # Отчет по заданию 3
+
+Задание 4 (разделение автоматов):
+13. assignment4_report.txt  # Отчет по заданию 4
+
+Вспомогательные файлы:
+14. PROJECT_COMPLETION_REPORT.txt # Финальный отчет
+15. file_manifest.txt       # Список файлов
+16. Makefile               # Для сборки проекта
+
+НЕ НУЖНО ЗАГРУЖАТЬ:
+- *.vvp (скомпилированные файлы)
+- *.vcd (файлы трассировки)
+- *.o (объектные файлы)
+- Любые временные файлы
+- README.md (если не создавали)
